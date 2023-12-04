@@ -16,8 +16,8 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 public class ProductService {
 
-    private final static String NF_MESSAGE = "Product not found";
-    private final static String NAME_MESSAGE = "Product name already use";
+    private final static String NF_MESSAGE = "product not found";
+    private final static String NAME_MESSAGE = "product name already in use";
 
     private final ProductRepository productRepository;
 
@@ -29,43 +29,31 @@ public class ProductService {
                 .switchIfEmpty(Mono.error(new CustomException(HttpStatus.NOT_FOUND, NF_MESSAGE)));
     }
 
-    public Mono<Product> save(ProductDto dto){
-
-        Mono<Boolean> existName = productRepository.findByName(dto.getName()).hasElement();
-
-        return existName.flatMap(exists -> exists ? Mono.error(new CustomException(HttpStatus.BAD_REQUEST, NAME_MESSAGE))
-                : productRepository.save(Product.builder().name(dto.getName()).price(dto.getPrice()).build()));
-
-
+    public Mono<Product> save(ProductDto dto) {
+        Mono<Boolean> existsName = productRepository.findByName(dto.getName()).hasElement();
+        return existsName.flatMap(exists -> exists ? // consulta si existe otro producto con "x" nombre
+                Mono.error(new CustomException(HttpStatus.BAD_REQUEST, NAME_MESSAGE)) // si existe da error
+                : productRepository.save(Product.builder().name(dto.getName()).price(dto.getPrice()).build())); // sino crea el producto
     }
 
-    public Mono<Product> update(int id, ProductDto dto){
-
+    public Mono<Product> update(int id, ProductDto dto) {
         Mono<Boolean> productId = productRepository.findById(id).hasElement();
         Mono<Boolean> productRepeatedName = productRepository.repeatedName(id, dto.getName()).hasElement();
 
-
-        return productId.flatMap(existsId -> existsId ? // si existe el id entra, sino da error
-                productRepeatedName.flatMap(
-                        existsName -> existsName ? // pregunta si existe el nombre
-                                Mono.error(new CustomException(HttpStatus.BAD_REQUEST, NAME_MESSAGE)) : // si existe viene aca
-                                productRepository.save(new Product(id, dto.getName(), dto.getPrice())) // sino actualiza el producto
-                ) :
-                Mono.error(new CustomException(HttpStatus.NOT_FOUND, NF_MESSAGE))); // error si existe
-    }
-
-
-    public Mono<Void> delete(int id){
-
-        Mono<Boolean> productId = productRepository.findById(id).hasElement();
-
         return productId.flatMap(
-                exists -> exists ? productRepository.deleteById(id) :
-                        Mono.error(new CustomException(HttpStatus.NOT_FOUND, NF_MESSAGE)));
+                existsId -> existsId ? // consulta si existe el id
+                        productRepeatedName.flatMap(existsName -> existsName ? // si existe el nombre
+                                Mono.error(new CustomException(HttpStatus.BAD_REQUEST, NAME_MESSAGE)) // da error porque ya existe
+                                : productRepository.save(new Product(id, dto.getName(), dto.getPrice()))) // sino actualiza el producto
+                        : Mono.error(new CustomException(HttpStatus.NOT_FOUND, NF_MESSAGE))); // sino se encuentra el id, da este error
     }
 
-
-
+    public Mono<Void> delete(int id) {
+        Mono<Boolean> productId = productRepository.findById(id).hasElement();
+        return productId.flatMap(exists -> exists ? // consulta si existe el id para eliminar
+                productRepository.deleteById(id) // si existe lo borra
+                : Mono.error(new CustomException(HttpStatus.NOT_FOUND, NF_MESSAGE))); // sino da error
+    }
 
 
 }
