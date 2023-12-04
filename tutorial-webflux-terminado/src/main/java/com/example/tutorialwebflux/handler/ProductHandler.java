@@ -26,17 +26,15 @@ public class ProductHandler {
     public Mono<ServerResponse> getAll(ServerRequest request){
 
         Flux<Product> products = productService.getAll();
+        return ServerResponse.ok().contentType(MediaType.APPLICATION_JSON).body(products, Product.class);
 
-        return ServerResponse.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(products, Product.class);
     }
 
     public Mono<ServerResponse> getById (ServerRequest request){
+
         int id =  Integer.valueOf(request.pathVariable("id"));
         Mono<Product> product = productService.getById(id);
-
-        return ServerResponse.ok().contentType(MediaType.APPLICATION_JSON)
-                .body(product, Product.class);
+        return ServerResponse.ok().contentType(MediaType.APPLICATION_JSON).body(product, Product.class);
 
     }
 
@@ -51,19 +49,16 @@ public class ProductHandler {
 
     public Mono<ServerResponse> update (ServerRequest request){
 
-        int id =  Integer.valueOf(request.pathVariable("id"));
+        int id = Integer.valueOf(request.pathVariable("id"));
         Mono<ProductDto> dtoMono = request.bodyToMono(ProductDto.class).doOnNext(objectValidator::validate);
-
         return dtoMono.flatMap(productDto -> ServerResponse.ok().contentType(MediaType.APPLICATION_JSON)
-                        .body(productService.update(id, productDto), Product.class));
-
+                .body(productService.update(id, productDto), Product.class));
     }
 
 
     public Mono<ServerResponse> delete (ServerRequest request){
-        int id =  Integer.valueOf(request.pathVariable("id"));
-        Mono<Product> product = productService.getById(id);
 
+        int id = Integer.valueOf(request.pathVariable("id"));
         return ServerResponse.ok().contentType(MediaType.APPLICATION_JSON)
                 .body(productService.delete(id), Product.class);
 
